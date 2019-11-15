@@ -59,6 +59,7 @@ from tensorflow.python.keras import backend as K
 from tensorflow.python.keras.callbacks import Callback
 from tensorflow_large_model_support import LMSKerasCallback
 import ctypes
+import datetime
 _cudart = ctypes.CDLL('libcudart.so')
 
 tf.logging.set_verbosity(tf.logging.INFO)
@@ -103,6 +104,11 @@ def random_image_generator(batch_size, num_classes, input_shape):
 def get_callbacks(args):
     callbacks = []
 
+    if args.tensorboard:
+        log_dir="logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+        callbacks.append(tensorboard_callback)
+
     if args.nvprof:
         callbacks.append(CudaProfileCallback(args.nvprof_epoch,
                                              args.nvprof_start,
@@ -112,7 +118,7 @@ def get_callbacks(args):
     if args.lms:
         # Specifying this starting name, from previous runs of LMS,
         # speeds up graph analysis time.
-        starting_names = ['bn_conv1/cond/pred_id']
+        starting_names = ['conv1_bn/cond/pred_id']
         lms = LMSKerasCallback(n_tensors=args.n_tensors, lb=args.lb,
                                starting_op_names=starting_names)
         callbacks.append(lms)
@@ -191,6 +197,9 @@ if __name__ == "__main__":
                         default=9,
                         help='The batch in which to stop CUDA profiling. '
                              '(Default 9)')
+    nvprof_group.add_argument('--tb', dest='tensorboard',
+                              action='store_true',
+                              help='log for tensorboard')
 
     args = parser.parse_args()
     run_model(args)
