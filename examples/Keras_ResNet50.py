@@ -136,7 +136,7 @@ def run_model(args):
     input_shape = (image_dim, image_dim, 3)
 
     num_classes = 15
-    batch_size = 1
+    batch_size = 1 if not args.inference_only else args.inference_batch_size
 
     resnet50 = tf.keras.applications.ResNet50(weights=None, include_top=True,
                                               input_shape=input_shape,
@@ -144,7 +144,10 @@ def run_model(args):
     resnet50.compile(optimizer='rmsprop', loss='categorical_crossentropy')
     random_generator = random_image_generator(batch_size, num_classes,
                                               input_shape)
-    resnet50.fit_generator(random_generator, steps_per_epoch=args.steps,
+    if args.inference_only:
+        ans = resnet50.predict(random_generator, steps=1)
+    else:
+        resnet50.fit_generator(random_generator, steps_per_epoch=args.steps,
                            epochs=args.epochs, callbacks=get_callbacks(args))
 
 if __name__ == "__main__":
@@ -197,9 +200,14 @@ if __name__ == "__main__":
                         default=9,
                         help='The batch in which to stop CUDA profiling. '
                              '(Default 9)')
-    nvprof_group.add_argument('--tb', dest='tensorboard',
+    parser.add_argument('--tb', dest='tensorboard',
                               action='store_true',
                               help='log for tensorboard')
+    parser.add_argument('--inference', dest='inference_only',
+                        action='store_true', help="only run inference \
+                        and not training")
+    parser.add_argument('--inference_batch_size', type=int, default=1,
+                        help="batch size to use for training")
 
     args = parser.parse_args()
     run_model(args)
